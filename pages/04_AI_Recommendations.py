@@ -1,7 +1,20 @@
 import streamlit as st
 import pandas as pd
-import ollama
+from groq import Groq
 
+
+# -----------------------------------
+# GROQ CLIENT
+# -----------------------------------
+
+client = Groq(
+    api_key=st.secrets["GROQ_API_KEY"]
+)
+
+
+# -----------------------------------
+# PAGE TITLE
+# -----------------------------------
 
 st.title("AI Recommendations")
 st.subheader("Get AI-powered recommendations from your data")
@@ -218,13 +231,13 @@ Rules:
 
 
         # -----------------------------------
-        # SEND FINDINGS TO LOCAL AI
+        # SEND FINDINGS TO GROQ AI
         # -----------------------------------
 
         try:
 
-            response = ollama.chat(
-                model="llama3.2:1b",
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
                 messages=[
                     {
                         "role": "user",
@@ -241,19 +254,14 @@ Rules:
             st.subheader("AI Recommendations")
 
             st.write(
-                response["message"]["content"]
+                response.choices[0].message.content
             )
 
 
         except Exception as e:
 
             st.error(
-                "Unable to connect to the local AI model."
-            )
-
-            st.write(
-                "Make sure Ollama is running and the "
-                "selected model is installed."
+                "Unable to connect to Groq AI."
             )
 
             st.code(str(e))
