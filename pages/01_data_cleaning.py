@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 
@@ -8,7 +9,7 @@ df = st.session_state["df"]
 
 st.dataframe(df)
 
-# Create a flag
+# Create a flag for checking null values
 if "check_nulls" not in st.session_state:
     st.session_state["check_nulls"] = False
 
@@ -29,93 +30,113 @@ if st.session_state["check_nulls"]:
     st.write("Missing Values")
     st.dataframe(missing_data)
 
-    # Now show the cleaning options
+    # Show cleaning options
     column = st.selectbox(
         "Select the column",
-        df.columns
+        df.columns,
+        key="null_column"
     )
 
     method = st.selectbox(
         "Select how to handle missing values",
-        ["Keep", "Mean", "Median", "Mode"]
+        ["Keep", "Mean", "Median", "Mode"],
+        key="null_method"
     )
 
-    if st.button("Apply"):
+    if st.button("Apply", key="apply_missing_values"):
 
         if method == "Mean":
-            df[column] = df[column].fillna(df[column].mean())
+            if pd.api.types.is_numeric_dtype(df[column]):
+                df[column] = df[column].fillna(df[column].mean())
+            else:
+                st.error("Mean can only be applied to numeric columns.")
 
         elif method == "Median":
-            df[column] = df[column].fillna(df[column].median())
+            if pd.api.types.is_numeric_dtype(df[column]):
+                df[column] = df[column].fillna(df[column].median())
+            else:
+                st.error("Median can only be applied to numeric columns.")
 
         elif method == "Mode":
-            df[column] = df[column].fillna(df[column].mode()[0])
+            modes = df[column].mode()
+
+            if not modes.empty:
+                df[column] = df[column].fillna(modes[0])
 
         st.session_state["df"] = df
 
-        st.success("Missing values handled successfully!")
+        if method == "Keep":
+            st.info("Missing values have been kept.")
+        else:
+            st.success("Missing values handled successfully!")
 
-# Create a flag for duplicates
+
+# Check data types of columns
 if "check_for_data_type" not in st.session_state:
     st.session_state["check_for_data_type"] = False
 
 if "change_data_type" not in st.session_state:
     st.session_state["change_data_type"] = False
 
-
 if st.button("Check data types of columns"):
     st.session_state["check_for_data_type"] = True
-
 
 if st.session_state["check_for_data_type"]:
 
     data_types = df.dtypes
+
+    st.write("Current data types")
     st.dataframe(data_types)
 
     if st.button("Change data types"):
         st.session_state["change_data_type"] = True
 
-
     if st.session_state["change_data_type"]:
 
         column = st.selectbox(
             "Select Column",
-            df.columns
+            df.columns,
+            key="datatype_column"
         )
 
         datatype = st.selectbox(
             "Select data type",
-            ["int", "str", "float", "datetime"]
+            ["int", "str", "float", "datetime"],
+            key="datatype_choice"
         )
 
-        if st.button("Apply data type"):
+        if st.button("Apply data type", key="apply_data_type"):
 
             try:
-
                 if datatype == "int":
-                    df[column] = df[column].astype(int)
+                    df[column] = pd.to_numeric(
+                        df[column], errors="raise"
+                    ).astype(int)
 
                 elif datatype == "str":
                     df[column] = df[column].astype(str)
 
                 elif datatype == "float":
-                    df[column] = df[column].astype(float)
+                    df[column] = pd.to_numeric(
+                        df[column], errors="raise"
+                    ).astype(float)
 
                 elif datatype == "datetime":
-                    df[column] = pd.to_datetime(df[column])
+                    df[column] = pd.to_datetime(
+                        df[column], errors="raise"
+                    )
 
                 st.session_state["df"] = df
 
                 st.success("Data type changed successfully!")
 
-            except ValueError:
+            except (ValueError, TypeError):
                 st.error(
                     "This column cannot be converted to the selected data type."
                 )
 
 
-# Create a flag for removing column
-
+# Remove columns
 if "remove_column" not in st.session_state:
     st.session_state["remove_column"] = False
 
@@ -126,17 +147,20 @@ if st.session_state["remove_column"]:
 
     choice = st.selectbox(
         "Do you want to remove any column?",
-        ["No", "Yes"]
+        ["No", "Yes"],
+        key="remove_column_choice"
     )
 
-    if choice == "Yes":
+    if choice == "Yes" and len(df.columns) > 0:
 
         column = st.selectbox(
             "Select the column you want to remove",
-            df.columns
+            df.columns,
+            key="column_to_remove"
         )
 
-        if st.button("Remove column"):
+        if st.button("Remove column", key="confirm_remove_column"):
+
             df = df.drop(columns=[column])
             st.session_state["df"] = df
 
@@ -145,5 +169,38 @@ if st.session_state["remove_column"]:
     elif choice == "No":
         st.info("No columns will be removed.")
 
-if st.button("Lets visualize your data ->"):
+
+# Remove duplicate records
+if "check_duplicates" not in st.session_state:
+    st.session_state["check_duplicates"] = False
+
+if st.button("Check for duplicate records"):
+    st.session_state["check_duplicates"] = True
+
+if st.session_state["check_duplicates"]:
+
+    duplicate_count = df.duplicated().sum()
+
+    st.write(f"Duplicate records found: {duplicate_count}")
+
+    if duplicate_count > 0:
+
+        if st.button("Remove Duplicates"):
+
+            df = df.drop_duplicates()
+
+            st.session_state["df"] = df
+
+            st.success("Duplicate records removed successfully!")
+
+            st.write(f"Remaining records: {len(df)}")
+
+            st.dataframe(df)
+
+    else:
+        st.info("No duplicate records found.")
+
+
+# Navigate to visualization page
+if st.button("Let's visualize your data ->"):
     st.switch_page("pages/02_visualization.py")
