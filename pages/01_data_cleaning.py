@@ -9,15 +9,17 @@ df = st.session_state["df"]
 
 st.dataframe(df)
 
-# Create a flag for checking null values
+
+# --------------------------------
+# Check for null values
+# --------------------------------
+
 if "check_nulls" not in st.session_state:
     st.session_state["check_nulls"] = False
 
-# Check for null values
 if st.button("Check for null values"):
     st.session_state["check_nulls"] = True
 
-# Show missing values after button is clicked
 if st.session_state["check_nulls"]:
 
     missing_values = df.isnull().sum()
@@ -30,7 +32,6 @@ if st.session_state["check_nulls"]:
     st.write("Missing Values")
     st.dataframe(missing_data)
 
-    # Show cleaning options
     column = st.selectbox(
         "Select the column",
         df.columns,
@@ -49,6 +50,7 @@ if st.session_state["check_nulls"]:
 
             if pd.api.types.is_numeric_dtype(df[column]):
                 df[column] = df[column].fillna(df[column].mean())
+                st.success("Missing values handled successfully!")
             else:
                 st.error("Mean can only be applied to numeric columns.")
 
@@ -56,6 +58,7 @@ if st.session_state["check_nulls"]:
 
             if pd.api.types.is_numeric_dtype(df[column]):
                 df[column] = df[column].fillna(df[column].median())
+                st.success("Missing values handled successfully!")
             else:
                 st.error("Median can only be applied to numeric columns.")
 
@@ -65,20 +68,21 @@ if st.session_state["check_nulls"]:
 
             if not modes.empty:
                 df[column] = df[column].fillna(modes[0])
+                st.success("Missing values handled successfully!")
+            else:
+                st.warning("No mode available for this column.")
+
+        elif method == "Keep":
+
+            st.info("Missing values have been kept.")
 
         st.session_state["df"] = df
 
-        if method == "Keep":
-            st.info("Missing values have been kept.")
-        elif method == "Mode" and modes.empty:
-            st.warning("No mode available for this column.")
-        elif method in ["Mean", "Median"] and not pd.api.types.is_numeric_dtype(df[column]):
-            pass
-        else:
-            st.success("Missing values handled successfully!")
 
+# --------------------------------
+# Check and change data types
+# --------------------------------
 
-# Check data types of columns
 if "check_for_data_type" not in st.session_state:
     st.session_state["check_for_data_type"] = False
 
@@ -115,6 +119,8 @@ if st.session_state["check_for_data_type"]:
         if st.button("Apply data type", key="apply_data_type"):
 
             try:
+
+                converted = None
 
                 if datatype == "int":
 
@@ -177,7 +183,10 @@ if st.session_state["check_for_data_type"]:
                 st.error(f"Conversion failed: {e}")
 
 
+# --------------------------------
 # Remove columns
+# --------------------------------
+
 if "remove_column" not in st.session_state:
     st.session_state["remove_column"] = False
 
@@ -215,7 +224,10 @@ if st.session_state["remove_column"]:
         st.info("No columns will be removed.")
 
 
-# Remove duplicate records
+# --------------------------------
+# Check and remove duplicates
+# --------------------------------
+
 if "check_duplicates" not in st.session_state:
     st.session_state["check_duplicates"] = False
 
@@ -247,7 +259,26 @@ if st.session_state["check_duplicates"]:
         st.info("No duplicate records found.")
 
 
+# --------------------------------
+# Download cleaned data as CSV
+# --------------------------------
+
+st.subheader("Download Cleaned Data")
+
+csv_data = df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    label="Download CSV",
+    data=csv_data,
+    file_name="cleaned_data.csv",
+    mime="text/csv"
+)
+
+
+# --------------------------------
 # Navigate to visualization page
+# --------------------------------
+
 if st.button("Let's visualize your data ->"):
 
     st.switch_page("pages/02_visualization.py")
