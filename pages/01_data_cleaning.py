@@ -46,18 +46,21 @@ if st.session_state["check_nulls"]:
     if st.button("Apply", key="apply_missing_values"):
 
         if method == "Mean":
+
             if pd.api.types.is_numeric_dtype(df[column]):
                 df[column] = df[column].fillna(df[column].mean())
             else:
                 st.error("Mean can only be applied to numeric columns.")
 
         elif method == "Median":
+
             if pd.api.types.is_numeric_dtype(df[column]):
                 df[column] = df[column].fillna(df[column].median())
             else:
                 st.error("Median can only be applied to numeric columns.")
 
         elif method == "Mode":
+
             modes = df[column].mode()
 
             if not modes.empty:
@@ -67,6 +70,10 @@ if st.session_state["check_nulls"]:
 
         if method == "Keep":
             st.info("Missing values have been kept.")
+        elif method == "Mode" and modes.empty:
+            st.warning("No mode available for this column.")
+        elif method in ["Mean", "Median"] and not pd.api.types.is_numeric_dtype(df[column]):
+            pass
         else:
             st.success("Missing values handled successfully!")
 
@@ -108,32 +115,66 @@ if st.session_state["check_for_data_type"]:
         if st.button("Apply data type", key="apply_data_type"):
 
             try:
+
                 if datatype == "int":
-                    df[column] = pd.to_numeric(
+
+                    converted = pd.to_numeric(
                         df[column], errors="raise"
                     ).astype(int)
 
                 elif datatype == "str":
-                    df[column] = df[column].astype(str)
+
+                    converted = df[column].astype(str)
 
                 elif datatype == "float":
-                    df[column] = pd.to_numeric(
+
+                    converted = pd.to_numeric(
                         df[column], errors="raise"
                     ).astype(float)
 
                 elif datatype == "datetime":
-                    df[column] = pd.to_datetime(
-                        df[column], errors="raise"
+
+                    converted = pd.to_datetime(
+                        df[column],
+                        format="mixed",
+                        errors="coerce",
+                        dayfirst=True
                     )
 
-                st.session_state["df"] = df
+                    invalid_dates = (
+                        converted.isna() & df[column].notna()
+                    )
 
-                st.success("Data type changed successfully!")
+                    if invalid_dates.any():
 
-            except (ValueError, TypeError):
-                st.error(
-                    "This column cannot be converted to the selected data type."
-                )
+                        st.warning(
+                            "Some date values could not be converted."
+                        )
+
+                        st.write("Invalid date records:")
+
+                        st.dataframe(
+                            df.loc[invalid_dates, [column]]
+                        )
+
+                        converted = None
+
+                if converted is not None:
+
+                    df[column] = converted
+
+                    st.session_state["df"] = df
+
+                    st.success(
+                        f"{column} successfully converted to {datatype}!"
+                    )
+
+                    st.write("Updated data type:")
+                    st.write(df[column].dtype)
+
+            except (ValueError, TypeError) as e:
+
+                st.error(f"Conversion failed: {e}")
 
 
 # Remove columns
@@ -162,11 +203,15 @@ if st.session_state["remove_column"]:
         if st.button("Remove column", key="confirm_remove_column"):
 
             df = df.drop(columns=[column])
+
             st.session_state["df"] = df
 
             st.success("Column removed successfully!")
 
+            st.dataframe(df)
+
     elif choice == "No":
+
         st.info("No columns will be removed.")
 
 
@@ -198,9 +243,11 @@ if st.session_state["check_duplicates"]:
             st.dataframe(df)
 
     else:
+
         st.info("No duplicate records found.")
 
 
 # Navigate to visualization page
 if st.button("Let's visualize your data ->"):
+
     st.switch_page("pages/02_visualization.py")
