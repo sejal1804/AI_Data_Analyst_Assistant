@@ -260,18 +260,23 @@ if st.session_state["check_duplicates"]:
 
 
 # --------------------------------
-# Download cleaned data as CSV
+# Download Updated / Cleaned Data
 # --------------------------------
 
-st.subheader("Download Cleaned Data")
+st.subheader("Download Your Cleaned Dataset")
 
+# Get the latest updated dataframe
+df = st.session_state["df"]
+
+# Convert updated dataframe into CSV
 csv_data = df.to_csv(index=False).encode("utf-8")
 
 st.download_button(
-    label="Download CSV",
+    label="Download Cleaned CSV",
     data=csv_data,
-    file_name="cleaned_data.csv",
-    mime="text/csv"
+    file_name="cleaned_dataset.csv",
+    mime="text/csv",
+    key="download_cleaned_csv"
 )
 
 
