@@ -224,6 +224,53 @@ if st.session_state["remove_column"]:
         st.info("No columns will be removed.")
 
 
+
+# --------------------------------
+# Rename Columns
+# --------------------------------
+
+if "rename_column" not in st.session_state:
+    st.session_state["rename_column"] = False
+
+if st.button("Rename any column"):
+    st.session_state["rename_column"] = True
+
+if st.session_state["rename_column"]:
+
+    column = st.selectbox(
+        "Select column to rename",
+        df.columns,
+        key="rename_column_select"
+    )
+
+    new_name = st.text_input(
+        "Enter new column name",
+        key="new_column_name"
+    )
+
+    if st.button("Apply Rename", key="apply_rename"):
+
+        new_name = new_name.strip()
+
+        if new_name == "":
+            st.error("Column name cannot be empty.")
+
+        elif new_name in df.columns and new_name != column:
+            st.error("This column name already exists.")
+
+        else:
+            df = df.rename(columns={column: new_name})
+
+            st.session_state["df"] = df
+
+            st.success(
+                f"Column '{column}' renamed to '{new_name}' successfully!"
+            )
+
+            st.dataframe(df)
+
+
+
 # --------------------------------
 # Check and remove duplicates
 # --------------------------------
